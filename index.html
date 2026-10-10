@@ -1,0 +1,218 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>English Game Academy</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f3f5ff;color:#20244a}
+header{background:linear-gradient(135deg,#4935d4,#8065f5);color:white;text-align:center;padding:24px 12px;border-radius:0 0 26px 26px}
+header h1{margin:5px;font-size:26px}
+main{max-width:680px;margin:auto;padding:15px}
+.card{background:white;padding:19px;border-radius:19px;margin:14px 0;box-shadow:0 4px 16px #25245a12}
+h2{font-size:21px}
+input{width:100%;padding:13px;margin:8px 0;border:1px solid #ccd0e9;border-radius:10px;font-size:16px}
+button{border:0;background:#5145dc;color:white;padding:12px 15px;border-radius:11px;font-size:15px;margin:5px 2px;cursor:pointer}
+button:disabled{background:#a8a8b8}
+.level{display:inline-block;width:46%;min-height:80px}
+.secondary{background:#e9e8ff;color:#3d35ad}
+.hidden{display:none!important}
+.answer{display:block;width:100%;text-align:left;background:#eeeefe;color:#29264e}
+.good{background:#d9f9e4;padding:12px;border-radius:10px}
+.bad{background:#ffe3e3;padding:12px;border-radius:10px}
+footer{text-align:center;padding:20px}
+table{width:100%;border-collapse:collapse}
+td,th{text-align:left;padding:9px;border-bottom:1px solid #eee}
+.small{font-size:13px;color:#666}
+</style>
+</head>
+<body>
+<header>
+<h1>🎮 English Game Academy</h1>
+<p>Learn • Play • Improve ⭐</p>
+</header>
+<main>
+<section id="login" class="card">
+<h2>👋 Welcome, student!</h2>
+<p>Enter your name and choose your level.</p>
+<input id="studentName" maxlength="40" placeholder="Your name">
+<div>
+<button class="level" onclick="enter('Kids')">🧸 Kids</button>
+<button class="level" onclick="enter('Beginner')">🌱 Beginner</button>
+<button class="level" onclick="enter('Elementary')">📘 Elementary</button>
+<button class="level" onclick="enter('Pre-Intermediate')">🚀 Pre-Intermediate</button>
+</div>
+<p id="loginMessage" class="small"></p>
+</section>
+
+<section id="student" class="hidden">
+<div class="card">
+<h2>👋 Hello, <span id="welcomeName"></span>!</h2>
+<p>Level: <b id="welcomeLevel"></b></p>
+<p>Today's score: <b id="todayScore">0</b> ⭐</p>
+<button onclick="showQuiz()">🎯 Play today's quiz</button>
+<button class="secondary" onclick="showBoard()">🏆 Leaderboard</button>
+<button class="secondary" onclick="logout()">Change student</button>
+</div>
+<div id="quiz" class="card hidden">
+<p id="questionCount"></p>
+<h2 id="question"></h2>
+<div id="answers"></div>
+<p id="feedback"></p>
+<button id="nextButton" onclick="nextQuestion()" class="hidden">Next ➜</button>
+</div>
+<div id="board" class="card hidden">
+<h2>🏆 Today's leaderboard</h2>
+<div id="boardContent"></div>
+<p class="small">This demo stores scores only in this browser.</p>
+</div>
+</section>
+
+<section id="teacher" class="card">
+<h2>👩‍🏫 Teacher's Area</h2>
+<p class="small">Teacher access only. Set a password in the code before using this section.</p>
+<div id="teacherLogin">
+<input id="teacherPassword" type="password" placeholder="Teacher password">
+<button onclick="teacherEnter()">Enter teacher area</button>
+<p id="teacherMessage" class="small"></p>
+</div>
+<div id="teacherPanel" class="hidden">
+<h3>📊 Student scores</h3>
+<div id="allScores"></div>
+<h3>➕ Add a quiz question</h3>
+<input id="newQuestion" placeholder="Question">
+<input id="option1" placeholder="Answer option 1">
+<input id="option2" placeholder="Answer option 2">
+<input id="option3" placeholder="Answer option 3">
+<input id="correctOption" type="number" min="1" max="3" placeholder="Correct option: 1, 2, or 3">
+<label>Level:</label>
+<select id="questionLevel" style="width:100%;padding:12px;border-radius:10px">
+<option>Kids</option><option>Beginner</option>
+<option>Elementary</option><option>Pre-Intermediate</option>
+</select>
+<button onclick="addQuestion()">Save question</button>
+<p id="addMessage"></p>
+<button class="secondary" onclick="teacherExit()">Exit teacher area</button>
+</div>
+</section>
+</main>
+<footer>🌟 English Game Academy 🌟</footer>
+
+<script>
+/*
+DEMO TEACHER PASSWORD: ChangeMe123!
+Change it below before use.
+Important: this browser-only demo is not secure for real teacher access.
+*/
+const TEACHER_PASSWORD="ChangeMe123!";
+
+const initialQuestions=[
+{level:"Kids",q:"Which one is an animal?",a:["Cat","Book","Pencil"],c:0},
+{level:"Kids",q:"What colour is the sun usually drawn?",a:["Blue","Yellow","Black"],c:1},
+{level:"Beginner",q:'What is "kitap" in English?',a:["Apple","Book","Water"],c:1},
+{level:"Beginner",q:'What is "suw" in English?',a:["Milk","Bread","Water"],c:2},
+{level:"Elementary",q:"Choose the correct sentence.",a:["She are happy.","She is happy.","She am happy."],c:1},
+{level:"Elementary",q:"What is the past of go?",a:["Goed","Going","Went"],c:2},
+{level:"Pre-Intermediate",q:"If I ___ time, I will call you.",a:["have","had","having"],c:0},
+{level:"Pre-Intermediate",q:"Choose the passive sentence.",a:["Ali wrote it.","Ali is writing it.","It was written by Ali."],c:2}
+];
+
+let questions=JSON.parse(localStorage.getItem("ega_questions")||"null")||initialQuestions;
+let currentName="",currentLevel="",quizList=[],quizIndex=0,answered=false;
+const today=new Date().toLocaleDateString("en-CA");
+function keyFor(name,level){return name.trim().toLowerCase()+"|"+level}
+function readScores(){return JSON.parse(localStorage.getItem("ega_scores")||"{}")}
+function writeScores(data){localStorage.setItem("ega_scores",JSON.stringify(data))}
+function enter(level){
+let name=document.getElementById("studentName").value.trim();
+if(!name){document.getElementById("loginMessage").textContent="Please enter your name first.";return}
+currentName=name;currentLevel=level;
+document.getElementById("login").classList.add("hidden");
+document.getElementById("student").classList.remove("hidden");
+document.getElementById("welcomeName").textContent=name;
+document.getElementById("welcomeLevel").textContent=level;
+document.getElementById("quiz").classList.add("hidden");
+document.getElementById("board").classList.add("hidden");
+refreshScore();
+}
+function refreshScore(){
+let s=readScores(),k=keyFor(currentName,currentLevel);
+document.getElementById("todayScore").textContent=(s[k]?.days?.[today]?.score)||0;
+}
+function showQuiz(){
+document.getElementById("board").classList.add("hidden");
+document.getElementById("quiz").classList.remove("hidden");
+quizList=questions.filter(q=>q.level===currentLevel);
+quizIndex=0;
+if(!quizList.length){document.getElementById("question").textContent="No questions yet. Ask your teacher to add questions.";document.getElementById("answers").innerHTML="";document.getElementById("questionCount").textContent="";document.getElementById("feedback").textContent="";document.getElementById("nextButton").classList.add("hidden");return}
+showQuestion();
+}
+function showQuestion(){
+answered=false;
+let q=quizList[quizIndex];
+document.getElementById("questionCount").textContent="Question "+(quizIndex+1)+" of "+quizList.length;
+document.getElementById("question").textContent=q.q;
+document.getElementById("feedback").textContent="";
+document.getElementById("nextButton").classList.add("hidden");
+document.getElementById("answers").innerHTML="";
+q.a.forEach((a,i)=>{
+let b=document.createElement("button");b.className="answer";b.textContent=a;
+b.onclick=()=>chooseAnswer(i,b);document.getElementById("answers").appendChild(b);
+});
+}
+function chooseAnswer(i,button){
+if(answered)return;
+answered=true;
+let q=quizList[quizIndex],s=readScores(),k=keyFor(currentName,currentLevel);
+if(!s[k])s[k]={name:currentName,level:currentLevel,days:{}};
+if(!s[k].days)s[k].days={};
+if(!s[k].days[today])s[k].days[today]={score:0,done:[]};
+let d=s[k].days[today],qid=currentLevel+"|"+q.q;
+let already=d.done.includes(qid);
+if(already){
+document.getElementById("feedback").textContent="You have already earned points for this question. No extra points.";
+}else{
+d.done.push(qid);
+if(i===q.c){d.score+=1;document.getElementById("feedback").textContent="✅ Correct! +1 point";document.getElementById("feedback").className="good";}
+else{document.getElementById("feedback").textContent="❌ Correct answer: "+q.a[q.c];document.getElementById("feedback").className="bad";}
+writeScores(s);
+}
+Array.from(document.getElementById("answers").children).forEach(b=>b.disabled=true);
+refreshScore();
+document.getElementById("nextButton").classList.remove("hidden");
+}
+function nextQuestion(){
+quizIndex++;
+if(quizIndex>=quizList.length){document.getElementById("question").textContent="🎉 Quiz completed!";document.getElementById("answers").innerHTML="";document.getElementById("feedback").textContent="Your score today: "+document.getElementById("todayScore").textContent;document.getElementById("nextButton").classList.add("hidden");return}
+showQuestion();
+}
+function showBoard(){
+document.getElementById("quiz").classList.add("hidden");
+document.getElementById("board").classList.remove("hidden");
+let s=readScores(),rows=Object.values(s).map(x=>({name:x.name,level:x.level,score:x.days?.[today]?.score||0})).sort((a,b)=>b.score-a.score);
+document.getElementById("boardContent").innerHTML=rows.length?'<table><tr><th>#</th><th>Name</th><th>Level</th><th>Points</th></tr>'+rows.map((r,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(r.name)}</td><td>${r.level}</td><td>${r.score}</td></tr>`).join("")+'</table>':"No scores yet.";
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function logout(){currentName="";currentLevel="";document.getElementById("student").classList.add("hidden");document.getElementById("login").classList.remove("hidden");document.getElementById("studentName").value=""}
+function teacherEnter(){
+if(document.getElementById("teacherPassword").value!==TEACHER_PASSWORD){document.getElementById("teacherMessage").textContent="Incorrect password.";return}
+document.getElementById("teacherLogin").classList.add("hidden");
+document.getElementById("teacherPanel").classList.remove("hidden");renderScores();
+}
+function teacherExit(){document.getElementById("teacherLogin").classList.remove("hidden");document.getElementById("teacherPanel").classList.add("hidden");document.getElementById("teacherPassword").value=""}
+function renderScores(){
+let s=readScores(),rows=Object.values(s);
+document.getElementById("allScores").innerHTML=rows.length?'<table><tr><th>Name</th><th>Level</th><th>Total points</th></tr>'+rows.map(r=>`<tr><td>${escapeHtml(r.name)}</td><td>${r.level}</td><td>${Object.values(r.days||{}).reduce((n,d)=>n+(d.score||0),0)}</td></tr>`).join("")+'</table>':"No students yet.";
+}
+function addQuestion(){
+let q=document.getElementById("newQuestion").value.trim(),a=[1,2,3].map(i=>document.getElementById("option"+i).value.trim()),c=Number(document.getElementById("correctOption").value)-1,level=document.getElementById("questionLevel").value;
+if(!q||a.some(x=>!x)||c<0||c>2){document.getElementById("addMessage").textContent="Fill in the question, all three answers and correct option (1–3).";return}
+questions.push({level,q,a,c});localStorage.setItem("ega_questions",JSON.stringify(questions));
+document.getElementById("addMessage").textContent="Question saved on this device.";
+["newQuestion","option1","option2","option3","correctOption"].forEach(id=>document.getElementById(id).value="");
+}
+</script>
+</body>
+</html>
